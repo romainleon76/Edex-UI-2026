@@ -317,7 +317,7 @@ class Terminal {
             this._disableCWDtracking = false;
             this._getTtyCWD = tty => {
                 return new Promise((resolve, reject) => {
-                    let pid = tty._pid;
+                    let pid = tty.pid;
                     switch(require("os").type()) {
                         case "Linux":
                             require("fs").readlink(`/proc/${pid}/cwd`, (e, cwd) => {
@@ -344,7 +344,7 @@ class Terminal {
             };
             this._getTtyProcess = tty => {
                 return new Promise((resolve, reject) => {
-                    let pid = tty._pid;
+                    let pid = tty.pid;
                     switch(require("os").type()) {
                         case "Linux":
                         case "Darwin":
@@ -414,9 +414,9 @@ class Terminal {
                 env: opts.env || process.env
             });
 
-            this.tty.onExit((code, signal) => {
+            this.tty.onExit(({ exitCode, signal }) => {
                 this._closed = true;
-                this.onclosed(code, signal);
+                this.onclosed(exitCode, signal);
             });
 
             this.wss = new this.Websocket({
@@ -456,7 +456,7 @@ class Terminal {
                 }
             });
             this.wss.on("connection", ws => {
-                this.onopened(this.tty._pid);
+                this.onopened(this.tty.pid);
                 ws.on("close", (code, reason) => {
                     this.ondisconnected(code, reason);
                 });

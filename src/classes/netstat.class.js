@@ -25,7 +25,7 @@ class Netstat {
         </div>`;
 
         this.offline = false;
-        this.lastconn = {finished: false}; // Prevent geoip lookup attempt until maxminddb is loaded
+        this.lastconn = {finished: true};
         this.iface = null;
         this.failedAttempts = {};
         this.runsBeforeGeoIPUpdate = 0;
@@ -41,20 +41,84 @@ class Netstat {
             this.updateInfo();
         }, 2000);
 
-        // Init GeoIP integrated backend
-        this.geoLookup = {
-            get: () => null
-        };
-        let geolite2 = require("geolite2-redist");
-        let maxmind = require("maxmind");
-        geolite2.downloadDbs(require("path").join(require("@electron/remote").app.getPath("userData"), "geoIPcache")).then(() => {
-           geolite2.open('GeoLite2-City', path => {
-                return maxmind.open(path);
-            }).catch(e => {throw e}).then(lookup => {
-                this.geoLookup = lookup;
-                this.lastconn.finished = true;
-            });
-        });
+        // Init GeoIP service (replaces maxmind/geolite2-redist which now require a paid license)
+        this.geoLookup = new (function() {
+            let cache = {};
+            let pending = {};
+            let lastLookup = 0;
+            let queue = [];
+            let processing = false;
+            let https = require("https");
+
+            function processQueue() {
+                if (processing) return;
+                processing = true;
+
+                let next = function() {
+                    if (queue.length === 0) {
+                        processing = false;
+                        return;
+                    }
+
+                    let now = Date.now();
+                    let wait = Math.max(0, 200 - (now - lastLookup));
+                    if (wait > 0) {
+                        setTimeout(next, wait);
+                        return;
+                    }
+
+                    let batch = queue.splice(0, 5);
+                    lastLookup = Date.now();
+
+                    let ips = batch.filter(function(ip) { return cache[ip] === undefined; });
+                    if (ips.length === 0) {
+                        next();
+                        return;
+                    }
+
+                    let query = ips.length === 1 ? ips[0] : ips.join(",");
+
+                    https.get("https://ip-api.com/json/" + query + "?fields=query,lat,lon,status", function(res) {
+                        let rawData = "";
+                        res.on("data", function(chunk) { rawData += chunk; });
+                        res.on("end", function() {
+                            try {
+                                let data = JSON.parse(rawData);
+                                if (Array.isArray(data)) {
+                                    data.forEach(function(r) {
+                                        cache[r.query] = r.status === "success" ? { location: { latitude: r.lat, longitude: r.lon } } : null;
+                                        delete pending[r.query];
+                                    });
+                                } else {
+                                    cache[data.query] = data.status === "success" ? { location: { latitude: data.lat, longitude: data.lon } } : null;
+                                    batch.forEach(function(ip) { delete pending[ip]; });
+                                }
+                            } catch(e) {
+                                batch.forEach(function(ip) { cache[ip] = null; delete pending[ip]; });
+                            }
+                            next();
+                        });
+                    }).on("error", function() {
+                        batch.forEach(function(ip) { cache[ip] = null; delete pending[ip]; });
+                        setTimeout(next, 1000);
+                    });
+                };
+
+                next();
+            }
+
+            return {
+                get: function(ip) {
+                    if (cache[ip] !== undefined) return cache[ip];
+                    if (pending[ip]) return null;
+                    pending[ip] = true;
+                    queue.push(ip);
+                    processQueue();
+                    return null;
+                }
+            };
+        })();
+        this.lastconn.finished = true;
     }
     updateInfo() {
         window.si.networkInterfaces().then(async data => {

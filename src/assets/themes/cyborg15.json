@@ -1,0 +1,45 @@
+{
+    "colors": {
+        "r": 0,
+        "g": 212,
+        "b": 255,
+        "black": "#0a0e12",
+        "light_black": "#11161c",
+        "grey": "#1e2a36",
+        "red": "#ff3355",
+        "green": "#00ff87",
+        "yellow": "#ffd700",
+        "blue": "#00d4ff",
+        "magenta": "#bf5fff",
+        "cyan": "#00f0ff",
+        "white": "#c8d6e5",
+        "brightBlack": "#1e2a36",
+        "brightRed": "#ff6b81",
+        "brightGreen": "#2ed573",
+        "brightYellow": "#ffa502",
+        "brightBlue": "#70a1ff",
+        "brightMagenta": "#df86ff",
+        "brightCyan": "#7bed9f",
+        "brightWhite": "#ffffff"
+    },
+    "cssvars": {
+        "font_main": "United Sans Medium",
+        "font_main_light": "United Sans Light"
+    },
+    "terminal": {
+        "fontFamily": "Fira Mono",
+        "cursorStyle": "block",
+        "foreground": "#00d4ff",
+        "background": "#0a0e12",
+        "cursor": "#00d4ff",
+        "cursorAccent": "#0a0e12",
+        "selection": "rgba(0,212,255,0.3)"
+    },
+    "globe": {
+        "base": "#0a0e12",
+        "marker": "#00d4ff",
+        "pin": "#00ff87",
+        "satellite": "#bf5fff"
+    },
+    "injectCSS": "#mod_sysinfo > div:first-child > h1 { color: #00ff87; text-shadow: 0 0 10px rgba(0,255,135,0.5); } #mod_sysinfo > div:nth-child(2) > h1 { color: #00d4ff; } #mod_netstat_inner h1 i { color: #00d4ff; } .mod_column .title p:first-child { color: #00ff87; } #main_shell_tabs li.active p { color: #00d4ff; text-shadow: 0 0 8px rgba(0,212,255,0.4); }"
+}

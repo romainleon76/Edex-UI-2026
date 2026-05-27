@@ -6,7 +6,6 @@ class Terminal {
             this.xTerm = require("xterm").Terminal;
             const {AttachAddon} = require("xterm-addon-attach");
             const {FitAddon} = require("xterm-addon-fit");
-            const {LigaturesAddon} = require("xterm-addon-ligatures");
             const {WebglAddon} = require("xterm-addon-webgl");
             this.Ipc = require("electron").ipcRenderer;
 
@@ -139,8 +138,6 @@ class Terminal {
             this.term.loadAddon(fitAddon);
             this.term.open(document.getElementById(opts.parentId));
             this.term.loadAddon(new WebglAddon());
-            let ligaturesAddon = new LigaturesAddon();
-            this.term.loadAddon(ligaturesAddon);
             this.term.attachCustomKeyEventHandler(e => {
                 window.keyboard.keydownHandler(e);
                 return true;
@@ -338,26 +335,47 @@ class Terminal {
                             });
                             break;
                         default:
-                            reject("Unsupported OS");
+                            require("child_process").exec(`powershell -command "(Get-Process -Id ${pid} -ErrorAction SilentlyContinue).StartInfo.WorkingDirectory"`, (e, cwd) => {
+                                if (e !== null || !cwd || cwd.trim() === "") {
+                                    reject("Unsupported OS");
+                                } else {
+                                    resolve(cwd.trim());
+                                }
+                            });
                     }
                 });
             };
             this._getTtyProcess = tty => {
                 return new Promise((resolve, reject) => {
-                    let pid = tty.pid;
-                    switch(require("os").type()) {
-                        case "Linux":
-                        case "Darwin":
-                            require("child_process").exec(`ps -o comm --no-headers --sort=+pid -g ${pid} | tail -1`, (e, proc) => {
-                                if (e !== null) {
-                                    reject(e);
-                                } else {
-                                    resolve(proc.trim());
-                                }
-                            });
-                            break;
-                        default:
-                            reject("Unsupported OS");
+                    if (tty.process) {
+                        resolve(tty.process);
+                    } else {
+                        let pid = tty.pid;
+                        switch(require("os").type()) {
+                            case "Linux":
+                            case "Darwin":
+                                require("child_process").exec(`ps -o comm --no-headers --sort=+pid -g ${pid} | tail -1`, (e, proc) => {
+                                    if (e !== null) {
+                                        reject(e);
+                                    } else {
+                                        resolve(proc.trim());
+                                    }
+                                });
+                                break;
+                            default:
+                                require("child_process").exec(`wmic process where (ParentProcessId=${pid}) get Name /FORMAT:VALUE 2>nul`, (e, proc) => {
+                                    if (e !== null) {
+                                        reject(e);
+                                    } else {
+                                        let match = proc.match(/Name=(.+)/);
+                                        if (match) {
+                                            resolve(match[1].trim());
+                                        } else {
+                                            reject("Process not found");
+                                        }
+                                    }
+                                });
+                        }
                     }
                 });
             };
